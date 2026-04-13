@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Owner Dashboard – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Owner Dashboard</h2>
+    <p>Welcome, <strong>{{ user.name }}</strong> · ID: <span class="mono">{{ user.role_id }}</span></p>
+  </div>
+</div>
+
+<div class="card" style="padding-bottom: 12px;">
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button class="btn btn-ghost owner-tab-btn active" data-target="o-overview">Overview</button>
+    <button class="btn btn-ghost owner-tab-btn" data-target="o-profile">Profile</button>
+  </div>
+
+  <div id="o-overview" class="owner-tab-content" style="margin-top:16px;">
+    <div class="stats-grid">
+      <div class="stat-card purple">
+        <div class="stat-value">{{ stats.properties }}</div>
+        <div class="stat-label">Properties</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value">{{ stats.tenants }}</div>
+        <div class="stat-label">Active Tenants</div>
+      </div>
+      <div class="stat-card green">
+        <div class="stat-value">{{ stats.paid }}</div>
+        <div class="stat-label">Paid (recent)</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-value">{{ stats.pending }}</div>
+        <div class="stat-label">Pending (recent)</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Tenants</div>
+        <a class="btn btn-ghost" href="{{ url_for('tenants') }}" style="padding:5px 14px; font-size:0.76rem;">View all →</a>
+      </div>
+      {% if leased_tenants %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tenant ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Contact</th> 
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in leased_tenants %}
+                <tr>
+                  <td><span class="mono">{{ t.tenant_id }}</span></td>
+                  <td><strong>{{ t.tenant_name }}</strong></td>
+                  <td>{{ t.email or '—' }}</td>
+                  <td>{{ t.contactNo or '—' }}</td> 
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color:var(--muted); font-size:0.875rem;">No tenants currently leasing your properties.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Your Properties</div>
+        <a class="btn btn-ghost" href="{{ url_for('properties') }}" style="padding:5px 14px; font-size:0.76rem;">Manage →</a>
+      </div>
+      {% if properties %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Address</th>
+                <th>Type</th>
+                <th>Rent (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in properties %}
+                <tr>
+                  <td><span class="mono">{{ p.property_id }}</span></td>
+                  <td><strong>{{ p.address }}</strong></td>
+                  <td>{{ p.property_type }}</td>
+                  <td class="money">₹{{ p.rent_amount }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color:var(--muted); font-size:0.875rem;">No properties linked to your owner ID yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Rent Activity</div>
+        <a class="btn btn-ghost" href="{{ url_for('payments') }}" style="padding:5px 14px; font-size:0.76rem;">View all →</a>
+      </div>
+      {% if rent_rows %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Property</th>
+                <th>Amount (₹)</th>
+                <th>Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in rent_rows %}
+                <tr>
+                  <td><strong>{{ r.tenant_name }}</strong></td>
+                  <td>{{ r.address }}</td>
+                  <td class="money">₹{{ r.amount }}</td>
+                  <td style="color:var(--muted); font-size:0.82rem;">{{ r.pay_date }}</td>
+                  <td>
+                    <span class="badge {% if r.payment_status=='Paid' %}badge-green{% else %}badge-orange{% endif %}">
+                      {{ r.payment_status }}
+                    </span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color:var(--muted); font-size:0.875rem;">No payments found yet for your properties.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="o-profile" class="owner-tab-content" style="display:none; margin-top:16px;">
+    <div class="profile-container">
+      <div class="profile-header">
+        <div class="profile-avatar-placeholder">
+          {{ owner_profile.owner_name[0] if owner_profile.owner_name else user.name[0] }}
+        </div>
+        <div class="profile-header-info">
+          <h3>{{ owner_profile.owner_name or user.name }}</h3>
+          <p><span class="badge badge-purple">Owner</span> · ID: <span class="mono">{{ owner_profile.owner_id or user.role_id }}</span></p>
+        </div>
+      </div>
+      
+      <div class="profile-details-grid">
+        <div class="profile-detail-item">
+          <div class="detail-label">Email Address</div>
+          <div class="detail-value">{{ user.email }}</div>
+        </div>
+        <div class="profile-detail-item">
+          <div class="detail-label">Phone Number</div>
+          <div class="detail-value">{{ owner_profile.contactNo or '—' }}</div>
+        </div>
+        <div class="profile-detail-item full-width">
+          <div class="detail-label">Registered Address</div>
+          <div class="detail-value">{{ owner_profile.address or '—' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const oBtns = document.querySelectorAll('.owner-tab-btn');
+  const oTabs = document.querySelectorAll('.owner-tab-content');
+  oBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      oBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.getAttribute('data-target');
+      oTabs.forEach((tab) => {
+        tab.style.display = (tab.id === target) ? 'block' : 'none';
+      });
+    });
+  });
+</script>
+{% endblock %}
+

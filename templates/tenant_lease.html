@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Lease Agreement – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Lease Agreement</h2>
+    <p>Details of your current property and lease terms</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title" style="font-size: 1.05rem; color: #75634f;">Property Details</div>
+  </div>
+  <!-- POINTER: This section shows property info from the 'lease' variable in app.py -->
+  {% if lease %}
+    <div class="profile-details-grid">
+      <div class="profile-detail-item full-width">
+        <div class="detail-label">Address</div>
+        <div class="detail-value">{{ lease.address }} (ID: {{ lease.property_id }})</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Property Type</div>
+        <div class="detail-value">{{ lease.property_type }}</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Monthly Rent</div>
+        <div class="detail-value money">₹{{ lease.rent_amount }}</div>
+      </div>
+    </div>
+  {% else %}
+    <p style="color:var(--muted); font-size:0.875rem;">No active lease information found.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title" style="font-size: 1.05rem; color: #75634f;">Owner Information</div>
+  </div>
+  {% if lease %}
+    <div class="profile-details-grid">
+      <div class="profile-detail-item">
+        <div class="detail-label">Owner Name</div>
+        <div class="detail-value">{{ lease.owner_name }}</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Owner Contact</div>
+        <div class="detail-value">{{ lease.owner_contact or '—' }}</div>
+      </div>
+    </div>
+  {% else %}
+    <p style="color:var(--muted); font-size:0.875rem;">Owner contact details unavailable.</p>
+  {% endif %}
+</div>
+{% endblock %}

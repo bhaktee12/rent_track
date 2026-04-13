@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}RentTracker{% endblock %}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #f7f5f0;
+      --bg2:       #f0ece4;
+      --surface:   #ffffff;
+      --surface2:  #f9f7f3;
+      --border:    #e2ddd6;
+      --border2:   #cec9bf;
+
+      --ink:       #1c1a17;
+      --ink2:      #3d3a33;
+      --muted:     #8c8679;
+      --faint:     #b8b3ab;
+
+      --amber:     #c8863a;
+      --amber-dim: rgba(200,134,58,.10);
+      --amber-mid: rgba(200,134,58,.22);
+
+      --teal:      #2e7a72;
+      --teal-dim:  rgba(46,122,114,.10);
+
+      --rose:      #b85555;
+      --rose-dim:  rgba(184,85,85,.10);
+
+      --sage:      #5a7a5c;
+      --sage-dim:  rgba(90,122,92,.10);
+
+      --radius:    10px;
+      --shadow:    0 1px 3px rgba(28,26,23,.06), 0 4px 16px rgba(28,26,23,.05);
+      --shadow-md: 0 2px 8px rgba(28,26,23,.08), 0 8px 32px rgba(28,26,23,.08);
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ─── SIDEBAR ─────────────────────────────── */
+    .sidebar {
+      width: 230px;
+      min-height: 100vh;
+      background: var(--ink);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      position: fixed;
+      top: 0; left: 0;
+      overflow: hidden;
+    }
+
+    /* subtle linen texture overlay */
+    .sidebar::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .sidebar > * { position: relative; z-index: 1; }
+
+    .sidebar-logo {
+      padding: 32px 24px 28px;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .sidebar-logo .wordmark {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+    .sidebar-logo h1 {
+      font-family: 'Lora', serif;
+      font-size: 1.25rem;
+      color: #f0ece4;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+    .sidebar-logo .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--amber);
+      margin-bottom: 2px;
+    }
+    .sidebar-logo p {
+      font-size: 0.65rem;
+      color: rgba(240,236,228,.32);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-top: 7px;
+    }
+
+    .sidebar-nav {
+      padding: 20px 14px;
+      flex: 1;
+    }
+    .nav-section-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.22);
+      padding: 0 10px;
+      margin-bottom: 6px;
+      margin-top: 18px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 9px 10px;
+      border-radius: 7px;
+      color: rgba(240,236,228,.52);
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 500;
+      transition: all 0.18s;
+      margin-bottom: 1px;
+      letter-spacing: 0.01em;
+    }
+    .nav-link:hover {
+      background: rgba(255,255,255,.06);
+      color: rgba(240,236,228,.85);
+    }
+    .nav-link.active {
+      background: rgba(200,134,58,.14);
+      color: #f0d9b8;
+    }
+    .nav-link.active .nav-icon { opacity: 1; }
+    .nav-icon {
+      font-size: 0.95rem;
+      width: 18px;
+      text-align: center;
+      opacity: .7;
+    }
+
+    .sidebar-footer {
+      padding: 18px 24px;
+      border-top: 1px solid rgba(255,255,255,.07);
+      font-size: 0.7rem;
+      color: rgba(240,236,228,.2);
+      letter-spacing: 0.06em;
+    }
+
+    /* ─── MAIN ─────────────────────────────────── */
+    .main {
+      margin-left: 230px;
+      flex: 1;
+      padding: 44px 48px;
+      min-height: 100vh;
+      max-width: calc(100vw - 230px);
+    }
+
+    /* ─── PAGE HEADER ──────────────────────────── */
+    .page-header {
+      margin-bottom: 36px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .page-header-left h2 {
+      font-family: 'Lora', serif;
+      font-size: 2rem;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+      font-weight: 600;
+    }
+    .page-header-left p {
+      color: var(--muted);
+      margin-top: 5px;
+      font-size: 0.85rem;
+      font-weight: 400;
+    }
+    /* keep old .page-header p working */
+    .page-header p { color: var(--muted); margin-top: 5px; font-size: 0.85rem; }
+    .page-header h2 {
+      font-family: 'Lora', serif;
+      font-size: 2rem;
+      color: var(--ink);
+      letter-spacing: -0.02em;
+      font-weight: 600;
+    }
+
+    /* ─── STAT GRID ────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 30px;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 20px 18px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .stat-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-1px);
+    }
+
+    /* thin left rule instead of top bar */
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 18%; bottom: 18%;
+      width: 3px;
+      border-radius: 0 2px 2px 0;
+    }
+    .stat-card.gold::before   { background: var(--amber); }
+    .stat-card.purple::before { background: #7a6dcf; }
+    .stat-card.green::before  { background: var(--sage); }
+    .stat-card.orange::before { background: #c47c35; }
+    .stat-card.red::before    { background: var(--rose); }
+
+    .stat-shape {
+      margin-bottom: 14px;
+      display: block;
+      line-height: 0;
+    }
+    .stat-value {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 2.1rem;
+      color: var(--ink);
+      line-height: 1;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 7px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .stat-delta {
+      font-size: 0.72rem;
+      margin-top: 8px;
+      color: var(--faint);
+    }
+
+    /* ─── CARD ─────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 22px;
+      box-shadow: var(--shadow);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 0.72rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+      font-family: 'DM Sans', sans-serif;
+    }
+    /* backwards compat */
+    .card > .card-title { margin-bottom: 18px; }
+
+    /* ─── TABLE ─────────────────────────────────── */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.865rem;
+    }
+    thead th {
+      text-align: left;
+      padding: 9px 14px;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--faint);
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      background: var(--surface2);
+    }
+    thead th:first-child { border-radius: 6px 0 0 0; }
+    thead th:last-child  { border-radius: 0 6px 0 0; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--bg2);
+      transition: background 0.13s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td {
+      padding: 13px 14px;
+      color: var(--ink2);
+      font-size: 0.875rem;
+    }
+    tbody td .sub {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ─── BADGES ─────────────────────────────────── */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .badge::before {
+      content: '';
+      width: 5px; height: 5px;
+      border-radius: 50%;
+    }
+    .badge-green  { background: var(--sage-dim);  color: var(--sage);  border: 1px solid rgba(90,122,92,.2); }
+    .badge-green::before  { background: var(--sage); }
+    .badge-orange { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(200,134,58,.2); }
+    .badge-orange::before { background: var(--amber); }
+    .badge-red    { background: var(--rose-dim);  color: var(--rose);  border: 1px solid rgba(184,85,85,.2); }
+    .badge-red::before    { background: var(--rose); }
+    .badge-purple { background: rgba(122,109,207,.1); color: #6a5fcf; border: 1px solid rgba(122,109,207,.2); }
+    .badge-purple::before { background: #7a6dcf; }
+
+    /* ─── FORM ───────────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-bottom: 7px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      padding: 10px 12px;
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 3px var(--amber-dim);
+    }
+    .form-group select option { background: var(--surface); }
+
+    /* ─── BUTTONS ─────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 20px;
+      border-radius: 7px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s;
+      text-decoration: none;
+      letter-spacing: 0.02em;
+    }
+    .btn-primary {
+      background: var(--ink);
+      color: var(--bg);
+    }
+    .btn-primary:hover {
+      background: var(--ink2);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(28,26,23,.18);
+    }
+    .btn-amber {
+      background: var(--amber);
+      color: #fff;
+    }
+    .btn-amber:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink2);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { background: var(--bg2); }
+    .btn-ghost.active {
+      background: var(--ink);
+      color: var(--bg);
+      border-color: var(--ink);
+    }
+
+    .btn-danger {
+      background: var(--rose-dim);
+      color: var(--rose);
+      border: 1px solid rgba(184,85,85,.2);
+      padding: 5px 12px;
+      font-size: 0.76rem;
+    }
+    .btn-danger:hover { background: rgba(184,85,85,.18); }
+
+    .form-actions { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+
+    /* ─── FLASH MESSAGES ──────────────────────────── */
+    .flash-container { margin-bottom: 22px; }
+    .flash {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.865rem;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .flash.success {
+      background: var(--sage-dim);
+      color: var(--sage);
+      border: 1px solid rgba(90,122,92,.2);
+    }
+    .flash.error {
+      background: var(--rose-dim);
+      color: var(--rose);
+      border: 1px solid rgba(184,85,85,.2);
+    }
+
+    /* ─── COLLAPSIBLE ─────────────────────────────── */
+    .add-form-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+
+    /* ─── DIVIDER ─────────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 24px 0;
+    }
+
+    /* ─── MONO ────────────────────────────────────── */
+    .mono {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.82em;
+      color: var(--muted);
+    }
+
+    .money {
+      font-family: 'DM Sans', sans-serif;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.01em;
+    }
+
+    /* ─── PROFILE ────────────────────────────────── */
+    .profile-container {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 30px;
+    }
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .profile-avatar-placeholder {
+      width: 80px;
+      height: 80px;
+      background: var(--amber);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 700;
+      border-radius: 50%;
+      text-transform: uppercase;
+      box-shadow: var(--shadow);
+    }
+    .profile-header-info h3 {
+      font-family: 'Lora', serif;
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+    .profile-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .profile-detail-item.full-width {
+      grid-column: 1 / -1;
+    }
+    .detail-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    .detail-value {
+      font-size: 1rem;
+      color: var(--ink);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="wordmark">
+      <h1>RentTracker</h1>
+      <span class="dot"></span>
+    </div>
+    <p>Property Management</p>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section-label">Navigation</div>
+    <a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint in ['home','owner_home','tenant_home'] %}active{% endif %}">
+      <span class="nav-icon">⌂</span> Dashboard
+    </a>
+    {% set u = session.get('user') %}
+    {% if u and u.role == 'owner' %}
+      <!-- OWNER NAVIGATION -->
+      <a href="{{ url_for('tenants') }}" class="nav-link {% if request.endpoint=='tenants' %}active{% endif %}">
+        <span class="nav-icon">◎</span> Tenants
+      </a>
+      <a href="{{ url_for('properties') }}" class="nav-link {% if request.endpoint=='properties' %}active{% endif %}">
+        <span class="nav-icon">▣</span> Properties
+      </a>
+      <a href="{{ url_for('payments') }}" class="nav-link {% if request.endpoint=='payments' %}active{% endif %}">
+        <span class="nav-icon">◈</span> Payments
+      </a>
+    {% elif u and u.role == 'tenant' %}
+      <!-- TENANT NAVIGATION 
+           POINTER: To change sidebar link names, edit the text inside the <a> tags below.
+           To change the icons, edit the character inside the <span class="nav-icon">.
+      -->
+      <a href="{{ url_for('tenant_payments') }}" class="nav-link {% if active_page=='payments' %}active{% endif %}">
+        <span class="nav-icon">◈</span> Payment History
+      </a>
+      <a href="{{ url_for('tenant_lease') }}" class="nav-link {% if active_page=='lease' %}active{% endif %}">
+        <span class="nav-icon">▣</span> Lease Agreement
+      </a>
+      <a href="{{ url_for('tenant_rent') }}" class="nav-link {% if active_page=='rent' %}active{% endif %}">
+        <span class="nav-icon">◎</span> Rent Status
+      </a>
+    {% endif %}
+  </nav>
+  <div class="sidebar-footer">
+    {% if u %}
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div>{{ u.email }}</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span class="mono" style="color:rgba(240,236,228,.35)">{{ u.role|upper }} · {{ u.role_id }}</span>
+          <a href="{{ url_for('logout') }}" style="color:rgba(240,236,228,.6);text-decoration:none;border-bottom:1px dashed rgba(240,236,228,.25);padding-bottom:1px">Log out</a>
+        </div>
+      </div>
+    {% else %}
+      RentTracker v2.0
+    {% endif %}
+  </div>
+</aside>
+
+<main class="main">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for cat, msg in messages %}
+          <div class="flash {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+</body>
+</html>

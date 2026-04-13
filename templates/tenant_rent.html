@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Rent Status – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Rent Status</h2>
+    <p>Current month's billing status</p>
+  </div>
+</div>
+
+<!-- POINTER: The stats cards below use the 'rent_status' variable from app.py -->
+<div class="stats-grid">
+  <div class="stat-card {% if rent_status.status == 'Paid' %}green{% elif rent_status.status == 'Overdue' %}red{% else %}orange{% endif %}">
+    <div class="stat-value">{{ rent_status.status }}</div>
+    <div class="stat-label">Current Status</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-value money">₹{{ rent_status.amount_due }}</div>
+    <div class="stat-label">Amount Due</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-value">{% if rent_status.due_date %}{{ rent_status.due_date.strftime('%d %b') }}{% else %}—{% endif %}</div>
+    <div class="stat-label">Due Date</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Make Payment</div>
+  </div>
+  {% if rent_status.status != 'Paid' %}
+    <p style="font-size: 0.9rem; margin-bottom: 15px;">You have a pending amount of <strong>₹{{ rent_status.amount_due }}</strong> due by {{ rent_status.due_date.strftime('%d %b %Y') if rent_status.due_date else 'this week' }}.</p>
+    <div class="form-actions">
+        <button class="btn btn-amber">Pay Now (Online)</button>
+        <button class="btn btn-ghost">Inform Owner of Cash/UPI</button>
+    </div>
+  {% else %}
+    <p style="color:var(--sage); font-weight: 500;">Great! You're all caught up for this month.</p>
+  {% endif %}
+</div>
+{% endblock %}

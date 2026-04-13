@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Payment History – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Payment History</h2>
+    <p>View all your past rent payments</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Transaction Log</div>
+  </div>
+  <!-- POINTER: This table displays the list of payments fetched from the 'payments_list' variable in app.py -->
+  {% if payments %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Mode</th>
+            <th>Amount</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payments %}
+            <tr>
+              <td>{{ p.pay_date.strftime('%d %b %Y') if p.pay_date else '—' }}</td>
+              <td>{{ p.payment_mode or '—' }}</td>
+              <td class="money">₹{{ p.amount }}</td>
+              <td>
+                <span class="badge {% if p.payment_status=='Paid' %}badge-green{% elif p.payment_status=='Pending' %}badge-orange{% else %}badge-red{% endif %}">
+                  {{ p.payment_status }}
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p style="color:var(--muted); font-size:0.875rem;">No payment records found for your account.</p>
+  {% endif %}
+</div>
+{% endblock %}

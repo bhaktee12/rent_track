@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Payments – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Payments</h2>
+  <p>Track rent payments and dues</p>
+</div>
+
+<!-- Add Payment -->
+<div class="card">
+  <details>
+    <summary>
+      <div class="add-form-toggle">
+        <span class="card-title" style="margin:0">➕ Record New Payment</span>
+        <span style="color:var(--accent); font-size:0.8rem;">Click to expand</span>
+      </div>
+    </summary>
+    <br/>
+    {% if leases %}
+    <form action="{{ url_for('add_payment') }}" method="POST">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Payment ID</label>
+          <input type="text" name="payment_id" placeholder="e.g. PAY000001" required/>
+        </div>
+        <div class="form-group">
+          <label>Lease</label>
+          <select name="lease_id" required>
+            <option value="">Select Lease</option>
+            {% for l in leases %}
+            <option value="{{ l.lease_id }}">Lease #{{ l.lease_id }} – {{ l.tenant_name }} @ {{ l.address }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount (₹)</label>
+          <input type="number" name="amount" placeholder="15000" required/>
+        </div>
+        <div class="form-group">
+          <label>Payment Date</label>
+          <input type="date" name="date" required/>
+        </div>
+        <div class="form-group">
+          <label>Mode</label>
+          <select name="mode">
+            <option value="online">online</option>
+            <option value="cash">cash</option>
+            <option value="card">card</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            <option>Paid</option>
+            <option>Pending</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Record Payment</button>
+      </div>
+    </form>
+    {% else %}
+    <p style="color:var(--muted); font-size:0.875rem;">No leases found. Add a lease in MySQL first to record payments.</p>
+    {% endif %}
+  </details>
+</div>
+
+<!-- Payment History -->
+<div class="card">
+  <div class="card-title">Payment History ({{ payments|length }})</div>
+  {% if payments %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Tenant</th>
+          <th>Lease</th>
+          <th>Amount (₹)</th>
+          <th>Date</th>
+          <th>Mode</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td>#{{ p.payment_id }}</td>
+          <td><strong>{{ p.tenant_name }}</strong></td>
+          <td>{{ p.lease_id }}</td>
+          <td class="money">₹{{ p.amount }}</td>
+          <td>{{ p.pay_date }}</td>
+          <td>{{ p.payment_mode }}</td>
+          <td>
+            <span class="badge {% if p.payment_status=='Paid' %}badge-green{% else %}badge-orange{% endif %}">
+              {{ p.payment_status }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color: var(--muted); font-size:0.875rem;">No payment records yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Properties – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2>Properties</h2>
+  <p>All registered rental properties</p>
+</div>
+
+<!-- Add Property -->
+<div class="card">
+  <details>
+    <summary>
+      <div class="add-form-toggle">
+        <span class="card-title" style="margin:0">➕ Add New Property</span>
+        <span style="color:var(--accent); font-size:0.8rem;">Click to expand</span>
+      </div>
+    </summary>
+    <br/>
+    <form action="{{ url_for('add_property') }}" method="POST">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Address</label>
+          <input type="text" name="address" placeholder="Pune" required/>
+        </div>
+        <div class="form-group">
+          <label>Type</label>
+          <select name="property_type">
+            <option>Apartment</option>
+            <option>Flat</option>
+            <option>Condo</option>
+            <option>Villa</option>
+            <option>Duplex</option>
+            <option>House</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Rent Amount (₹)</label>
+          <input type="number" name="rent_amount" placeholder="15000" required/>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Add Property</button>
+      </div>
+    </form>
+  </details>
+</div>
+
+<!-- Properties Table -->
+<div class="card">
+  <div class="card-title">All Properties ({{ properties|length }})</div>
+  {% if properties %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Address</th>
+          <th>Type</th>
+          <th>Rent (₹)</th>
+          <th>Owner</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in properties %}
+        <tr>
+          <td>{{ p.property_id }}</td>
+          <td><strong>{{ p.address }}</strong></td>
+          <td>{{ p.property_type }}</td>
+          <td class="money">₹{{ p.rent_amount }}</td>
+          <td>{{ p.owner_name or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p style="color: var(--muted); font-size:0.875rem;">No properties yet. Add owners first, then add properties.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Tenant Dashboard – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Tenant Dashboard</h2>
+    <p>Hi, <strong>{{ user.name }}</strong> · ID: <span class="mono">{{ user.role_id }}</span></p>
+  </div>
+</div>
+
+<div class="card" style="padding-bottom: 12px;">
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <!-- POINTER: To change tab names, edit the text inside the <button> tags below. -->
+    <button class="btn btn-ghost tenant-tab-btn active" data-target="t-overview">Overview</button>
+    <button class="btn btn-ghost tenant-tab-btn" data-target="t-profile">Profile</button>
+    <button class="btn btn-ghost tenant-tab-btn" data-target="t-contact">Contact Owner</button>
+    <button class="btn btn-ghost tenant-tab-btn" data-target="t-search">Search Property</button>
+  </div>
+
+  <div id="t-overview" class="tenant-tab-content" style="margin-top:16px;">
+    <div class="stats-grid">
+      <div class="stat-card {% if rent_status.status == 'Paid' %}green{% elif rent_status.status == 'Overdue' %}red{% else %}orange{% endif %}">
+        <div class="stat-value">{{ rent_status.status }}</div>
+        <div class="stat-label">Rent Status</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-value money">₹{{ rent_status.amount_due }}</div>
+        <div class="stat-label">Amount Due</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="stat-value">{% if rent_status.due_date %}{{ rent_status.due_date.strftime('%d %b') }}{% else %}—{% endif %}</div>
+        <div class="stat-label">Due Date</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Payments</div>
+        <button class="btn btn-ghost tenant-tab-btn" data-target="t-history" style="padding:5px 14px; font-size:0.76rem;">View all →</button>
+      </div>
+      {% if payment_history %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in payment_history[:2] %}
+                <tr>
+                  <td>{{ p.month }}</td>
+                  <td class="money">₹{{ p.amount }}</td>
+                  <td>
+                    <span class="badge {% if p.status=='Paid' %}badge-green{% elif p.status=='Pending' %}badge-orange{% else %}badge-red{% endif %}">
+                      {{ p.status }}
+                    </span>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <p style="color:var(--muted); font-size:0.875rem;">No payment records found.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Notifications</div>
+      </div>
+      {% if notifications %}
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          {% for n in notifications[:2] %}
+            <div class="flash success" style="margin-bottom:0; font-size: 0.8rem;">{{ n }}</div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p style="color:var(--muted); font-size:0.875rem;">No new notifications.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="t-contact" class="tenant-tab-content" style="display:none; margin-top:16px;">
+    <!-- POINTER: This tab shows owner contact info. -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Your Property Owner</div>
+      </div>
+      {% if owner_contact %}
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; font-size: 0.875rem;">
+          <div>
+            <div class="detail-label">Name</div>
+            <div class="detail-value">{{ owner_contact.name or '—' }}</div>
+          </div>
+          <div>
+            <div class="detail-label">Property</div>
+            <div class="detail-value">{{ owner_contact.property or '—' }}</div>
+          </div>
+          <div class="full-width" style="margin-top:10px;">
+            {% if owner_contact.phone %}
+              <a class="btn btn-amber" href="tel:{{ owner_contact.phone }}">Call Owner: {{ owner_contact.phone }}</a>
+            {% else %}
+              <div class="detail-label">Contact</div>
+              <div class="detail-value">Not available</div>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <p style="color:var(--muted); font-size:0.875rem;">No owner info available for your current lease.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="t-search" class="tenant-tab-content" style="display:none; margin-top:16px;">
+    <!-- POINTER: This tab allows searching for other properties. -->
+    <div class="card-title">Search Other Properties</div>
+    <form method="GET" action="{{ url_for('tenant_home') }}" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+      <input
+        name="q"
+        value="{{ browse_q }}"
+        placeholder="Search by locality / address (e.g. Pimpri, Pune)…"
+        style="flex:1; min-width:220px; border:1px solid var(--border2); border-radius:7px; padding:10px 12px;"
+      />
+      <button class="btn btn-amber" type="submit">Search</button>
+    </form>
+    {% if browse_q %}
+      <div style="margin-top:12px; color:var(--muted); font-size:0.85rem;">
+        Showing results for <strong>{{ browse_q }}</strong> ({{ browse_properties|length }})
+      </div>
+      {% if browse_properties %}
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Type</th>
+                <th>Rent (₹)</th>
+                <th>Owner</th>
+                <th>Contact</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in browse_properties %}
+                <tr>
+                  <td>
+                    <strong>{{ p.address }}</strong>
+                    <div class="sub">ID: <span class="mono">{{ p.property_id }}</span></div>
+                  </td>
+                  <td>{{ p.property_type }}</td>
+                  <td class="money">₹{{ p.rent_amount }}</td>
+                  <td>{{ p.owner_name or '—' }}</td>
+                  <td>
+                    {% if p.contactNo %}
+                      <a class="btn btn-ghost" style="padding:6px 12px; font-size:0.78rem;" href="tel:{{ p.contactNo }}">
+                        Contact
+                      </a>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <div id="t-profile" class="tenant-tab-content" style="display:none; margin-top:16px;">
+    <div class="profile-container">
+      <div class="profile-header">
+        <div class="profile-avatar-placeholder">
+          {{ tenant_profile.name[0] if tenant_profile.name else user.name[0] }}
+        </div>
+        <div class="profile-header-info">
+          <h3>{{ tenant_profile.name or user.name }}</h3>
+          <p><span class="badge badge-teal">Tenant</span> · ID: <span class="mono">{{ tenant_profile.tenant_id or user.role_id }}</span></p>
+        </div>
+      </div>
+      
+      <div class="profile-details-grid">
+        <div class="profile-detail-item">
+          <div class="detail-label">Email Address</div>
+          <div class="detail-value">{{ tenant_profile.email or user.email }}</div>
+        </div>
+        <div class="profile-detail-item">
+          <div class="detail-label">Phone Number</div>
+          <div class="detail-value">{{ tenant_profile.phone or '—' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const tBtns = document.querySelectorAll('.tenant-tab-btn');
+  const tTabs = document.querySelectorAll('.tenant-tab-content');
+  tBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      tBtns.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const target = btn.getAttribute('data-target');
+      tTabs.forEach((tab) => {
+        tab.style.display = (tab.id === target) ? 'block' : 'none';
+      });
+    });
+  });
+</script>
+{% endblock %}
+

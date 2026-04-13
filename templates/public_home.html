@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>TrackMyRent – Browse Properties</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root{
+      --bg:#f7f5f0; --surface:#ffffff; --surface2:#fbfaf7; --border:#e2ddd6;
+      --ink:#1c1a17; --muted:#7b756b; --accent:#c8863a; --accent2:#8c4a1e;
+      --radius:14px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink)}
+    .nav{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+    .nav-inner{max-width:1100px;margin:0 auto;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .logo{font-family:'Lora',serif;font-weight:600;letter-spacing:-0.2px;font-size:20px}
+    .logo span{color:var(--accent)}
+    .nav-right{display:flex;align-items:center;gap:10px}
+    .btn{border:1px solid var(--border);background:var(--surface);padding:9px 12px;border-radius:10px;font-size:13px;text-decoration:none;color:var(--ink);cursor:pointer}
+    .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+    .btn.primary:hover{background:var(--accent2);border-color:var(--accent2)}
+    .btn:hover{background:var(--surface2)}
+    .wrap{max-width:1100px;margin:0 auto;padding:26px 18px 48px}
+    .hero{background:linear-gradient(135deg,#fdf0e4 0%,#fae8d0 70%,#f5d5b0 100%);border:1px solid rgba(200,134,58,.22);border-radius:18px;padding:26px 22px}
+    .hero h1{font-family:'Lora',serif;font-size:30px;line-height:1.15}
+    .hero p{color:#7a5c45;margin-top:8px;max-width:720px;line-height:1.55}
+    .search{margin-top:16px;display:flex;gap:10px;flex-wrap:wrap}
+    .search input{flex:1;min-width:220px;border:1px solid var(--border);border-radius:12px;padding:11px 12px;font-size:14px;background:rgba(255,255,255,.9)}
+    .grid{margin-top:22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 1px 3px rgba(28,26,23,.05)}
+    .card-top{height:130px;background:#f3ede3;display:flex;align-items:center;justify-content:center;font-size:30px}
+    .card-body{padding:14px 14px 16px}
+    .price{font-family:'DM Sans',sans-serif;color:var(--accent2);font-size:18px;font-variant-numeric:tabular-nums}
+    .name{margin-top:6px;font-weight:600}
+    .meta{margin-top:4px;color:var(--muted);font-size:12px;line-height:1.35}
+    .tagrow{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+    .tag{font-size:11px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);padding:3px 8px;border-radius:999px}
+    .empty{margin-top:18px;padding:18px;border:1px dashed var(--border);border-radius:14px;color:var(--muted);background:rgba(255,255,255,.6)}
+    .flash{max-width:1100px;margin:12px auto 0;padding:0 18px}
+    .flash .msg{padding:10px 12px;border-radius:12px;margin-bottom:8px;font-size:13px}
+    .flash .success{background:rgba(90,122,92,.10);border:1px solid rgba(90,122,92,.20);color:#5a7a5c}
+    .flash .error{background:rgba(184,85,85,.10);border:1px solid rgba(184,85,85,.20);color:#b85555}
+  </style>
+</head>
+<body>
+  <div class="nav">
+    <div class="nav-inner">
+      <div class="logo">Track<span>MyRent</span></div>
+      <div class="nav-right">
+        <a class="btn" href="{{ url_for('login') }}">Log in</a>
+        <a class="btn primary" href="{{ url_for('signup') }}">Sign up</a>
+      </div>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash">
+        {% for cat, msg in messages %}
+          <div class="msg {{ cat }}">{{ msg }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <div class="wrap">
+    <div class="hero">
+      <h1>Explore properties near you</h1>
+      <p>Log in to track rentals, payments, and more.</p>
+      <form class="search" method="GET" action="{{ url_for('public_home') }}">
+        <input name="q" value="{{ q }}" placeholder="Try: Pimpri, Pune, Chinchwad…" />
+        <button class="btn primary" type="submit">Search</button>
+      </form>
+    </div>
+
+    {% if properties %}
+      <div class="grid">
+        {% for p in properties %}
+          <div class="card">
+            <div class="card-top">🏠</div>
+            <div class="card-body">
+              <div class="name">{{ p.property_type }} in {{ p.address }}</div>
+              <!--<div class="price">₹{{ p.rent_amount }}<span style="color:var(--muted);font-size:12px">/mo</span></div>-->
+              </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">No properties found{% if q %} for “{{ q }}”{% endif %}.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
+
