@@ -7,6 +7,7 @@
     <h2>Owner Dashboard</h2>
     <p>Welcome, <strong>{{ user.name }}</strong> · ID: <span class="mono">{{ user.role_id }}</span></p>
   </div>
+  <a class="btn btn-ghost" href="{{ url_for('owner_notifications') }}">Notifications</a>
 </div>
 
 <div class="card" style="padding-bottom: 12px;">
@@ -48,7 +49,7 @@
                 <th>Tenant ID</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Contact</th> 
+                <th>Contact</th>
               </tr>
             </thead>
             <tbody>
@@ -57,14 +58,20 @@
                   <td><span class="mono">{{ t.tenant_id }}</span></td>
                   <td><strong>{{ t.tenant_name }}</strong></td>
                   <td>{{ t.email or '—' }}</td>
-                  <td>{{ t.contactNo or '—' }}</td> 
+                  <td>
+                    {% if t.contactNo %}
+                      <a class="btn btn-ghost" style="padding:5px 10px; font-size:0.74rem;" href="tel:{{ t.contactNo }}">{{ t.contactNo }}</a>
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
       {% else %}
-        <p style="color:var(--muted); font-size:0.875rem;">No tenants currently leasing your properties.</p>
+        <p style="color:var(--muted); font-size:0.875rem;">No tenants available yet.</p>
       {% endif %}
     </div>
 

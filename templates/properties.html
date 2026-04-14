@@ -58,7 +58,9 @@
           <th>Address</th>
           <th>Type</th>
           <th>Rent (₹)</th>
-          <th>Owner</th>
+          <th>Rental Status</th>
+          <th>Lease Details</th>
+          <th>Connect</th>
         </tr>
       </thead>
       <tbody>
@@ -68,7 +70,34 @@
           <td><strong>{{ p.address }}</strong></td>
           <td>{{ p.property_type }}</td>
           <td class="money">₹{{ p.rent_amount }}</td>
-          <td>{{ p.owner_name or '—' }}</td>
+          <td>
+            {% if p.active_lease_id %}
+              <span class="badge badge-green">Rented</span>
+            {% else %}
+              <span class="badge badge-orange">Vacant</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.active_lease_id %}
+              <div class="sub">Tenant: {{ p.active_tenant_name or '—' }} ({{ p.active_tenant_id or '—' }})</div>
+            {% else %}
+              <span class="sub">No active lease</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.active_lease_id and (p.active_tenant_contact or p.active_tenant_email) %}
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                {% if p.active_tenant_contact %}
+                  <a class="btn btn-ghost" style="padding:5px 10px; font-size:0.74rem;" href="tel:{{ p.active_tenant_contact }}">Call Tenant</a>
+                {% endif %}
+                {% if p.active_tenant_email %}
+                  <a class="btn btn-ghost" style="padding:5px 10px; font-size:0.74rem;" href="mailto:{{ p.active_tenant_email }}">Email Tenant</a>
+                {% endif %}
+              </div>
+            {% else %}
+              <span class="sub">—</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>

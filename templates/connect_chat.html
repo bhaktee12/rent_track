@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Connection Chat – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Connection Chat</h2>
+    <p>{{ request_row.tenant_name }} ↔ {{ request_row.owner_name }} · {{ request_row.address }}</p>
+  </div>
+  {% if user.role == 'owner' %}
+    <a class="btn btn-ghost" href="{{ url_for('owner_notifications') }}">Back to Notifications</a>
+  {% else %}
+    <a class="btn btn-ghost" href="{{ url_for('tenant_home', tab='search') }}">Back to Search</a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Conversation</div>
+    <span class="badge {% if request_row.status == 'Connected' %}badge-green{% elif request_row.status == 'Closed' %}badge-red{% else %}badge-orange{% endif %}">{{ request_row.status }}</span>
+  </div>
+
+  {% if messages %}
+    <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+      {% for m in messages %}
+        <div style="padding:12px 14px; border:1px solid var(--border); border-radius:8px; background:{% if m.sender_role == user.role %}var(--amber-dim){% else %}var(--surface2){% endif %};">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:6px;">
+            <strong style="font-size:0.82rem;">{{ 'You' if m.sender_role == user.role else ('Owner' if m.sender_role == 'owner' else 'Tenant') }}</strong>
+            <span class="mono">{{ m.created_at }}</span>
+          </div>
+          <div style="font-size:0.9rem; color:var(--ink2);">{{ m.message }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p style="color:var(--muted); font-size:0.875rem; margin-bottom:16px;">No messages yet. Start the conversation below.</p>
+  {% endif %}
+
+  <form method="POST">
+    <div class="form-group">
+      <label>New Message</label>
+      <textarea name="message" rows="4" required placeholder="Type your message..." style="width:100%; border:1px solid var(--border2); border-radius:7px; padding:10px 12px; font-family:'DM Sans',sans-serif; font-size:0.875rem;"></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Send</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

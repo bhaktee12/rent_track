@@ -27,6 +27,82 @@
 
 <div class="card">
   <div class="card-header">
+    <div class="card-title">Transactions</div>
+  </div>
+
+  <div style="margin-bottom: 14px;">
+    <div class="detail-label" style="margin-bottom:8px;">Current Month</div>
+    {% if current_month_transactions %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Mode</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in current_month_transactions %}
+              <tr>
+                <td>{{ tx.pay_date.strftime('%d %b %Y') if tx.pay_date else '—' }}</td>
+                <td>{{ tx.payment_mode or '—' }}</td>
+                <td class="money">₹{{ tx.amount }}</td>
+                <td>
+                  <span class="badge {% if tx.payment_status=='Paid' %}badge-green{% elif tx.payment_status=='Pending' %}badge-orange{% else %}badge-red{% endif %}">
+                    {{ tx.payment_status }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color:var(--muted); font-size:0.875rem;">No transactions in current month.</p>
+    {% endif %}
+  </div>
+
+  <hr class="divider" />
+
+  <div>
+    <div class="detail-label" style="margin-bottom:8px;">Previous Months</div>
+    {% if previous_month_transactions %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Mode</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in previous_month_transactions %}
+              <tr>
+                <td>{{ tx.pay_date.strftime('%d %b %Y') if tx.pay_date else '—' }}</td>
+                <td>{{ tx.payment_mode or '—' }}</td>
+                <td class="money">₹{{ tx.amount }}</td>
+                <td>
+                  <span class="badge {% if tx.payment_status=='Paid' %}badge-green{% elif tx.payment_status=='Pending' %}badge-orange{% else %}badge-red{% endif %}">
+                    {{ tx.payment_status }}
+                  </span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p style="color:var(--muted); font-size:0.875rem;">No previous transactions.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
     <div class="card-title">Make Payment</div>
   </div>
   {% if rent_status.status != 'Paid' %}

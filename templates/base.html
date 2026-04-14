@@ -574,19 +574,22 @@
       <a href="{{ url_for('payments') }}" class="nav-link {% if request.endpoint=='payments' %}active{% endif %}">
         <span class="nav-icon">◈</span> Payments
       </a>
+      <a href="{{ url_for('owner_notifications') }}" class="nav-link {% if request.endpoint in ['owner_notifications','connect_chat'] and u.role=='owner' %}active{% endif %}">
+        <span class="nav-icon">✉</span> Notifications
+      </a>
     {% elif u and u.role == 'tenant' %}
       <!-- TENANT NAVIGATION 
            POINTER: To change sidebar link names, edit the text inside the <a> tags below.
            To change the icons, edit the character inside the <span class="nav-icon">.
       -->
-      <a href="{{ url_for('tenant_payments') }}" class="nav-link {% if active_page=='payments' %}active{% endif %}">
-        <span class="nav-icon">◈</span> Payment History
-      </a>
       <a href="{{ url_for('tenant_lease') }}" class="nav-link {% if active_page=='lease' %}active{% endif %}">
         <span class="nav-icon">▣</span> Lease Agreement
       </a>
       <a href="{{ url_for('tenant_rent') }}" class="nav-link {% if active_page=='rent' %}active{% endif %}">
         <span class="nav-icon">◎</span> Rent Status
+      </a>
+      <a href="{{ url_for('tenant_payments') }}" class="nav-link {% if active_page=='payments' %}active{% endif %}">
+        <span class="nav-icon">◈</span> Payment History
       </a>
     {% endif %}
   </nav>

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Contact Owner – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Contact Owner</h2>
+    <p>Send a message to the owner of your currently rented property.</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('tenant_lease') }}">Back to Lease</a>
+</div>
+
+{% if lease %}
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Current Lease</div>
+    </div>
+    <div class="profile-details-grid">
+      <div class="profile-detail-item full-width">
+        <div class="detail-label">Property</div>
+        <div class="detail-value">{{ lease.address }} ({{ lease.property_id }})</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Owner</div>
+        <div class="detail-value">{{ lease.owner_name or '—' }}</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Owner Contact</div>
+        <div class="detail-value">{{ lease.contactNo or '—' }}</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Rent</div>
+        <div class="detail-value money">₹{{ lease.rent_amount }}</div>
+      </div>
+      <div class="profile-detail-item">
+        <div class="detail-label">Property Type</div>
+        <div class="detail-value">{{ lease.property_type }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Message Owner</div>
+    </div>
+    <form method="POST">
+      <div class="form-group">
+        <label>Message</label>
+        <textarea name="message" rows="5" placeholder="Hi, I have a question regarding my rented property..." style="width:100%; border:1px solid var(--border2); border-radius:7px; padding:10px 12px; font-family:'DM Sans',sans-serif; font-size:0.875rem;"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" type="submit">Send</button>
+      </div>
+    </form>
+  </div>
+{% else %}
+  <div class="card">
+    <p style="color:var(--muted); font-size:0.875rem;">No active lease found, so owner contact is not available.</p>
+  </div>
+{% endif %}
+{% endblock %}

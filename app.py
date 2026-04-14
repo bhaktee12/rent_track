@@ -55,6 +55,65 @@ def ensure_auth_schema():
         db.close()
 
 
+def ensure_connect_schema():
+    """
+    Create tables for tenant-owner connection requests and chat messages.
+    """
+    db = get_db()
+    if not db:
+        return
+    cur = db.cursor()
+    try:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tenant_interest (
+              request_id INT AUTO_INCREMENT PRIMARY KEY,
+              tenant_id VARCHAR(16) NOT NULL,
+              property_id VARCHAR(16) NOT NULL,
+              owner_id VARCHAR(16) NOT NULL,
+              message TEXT,
+              status ENUM('Pending','Connected','Closed') DEFAULT 'Pending',
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_interest_owner (owner_id, status, created_at),
+              INDEX idx_interest_tenant (tenant_id, created_at)
+            )
+            """
+        )
+
+        # Backward-compat: if tenant_interest existed without request_id, add it.
+        cur.execute("SHOW COLUMNS FROM tenant_interest LIKE 'request_id'")
+        has_request_id = cur.fetchone() is not None
+        if not has_request_id:
+            try:
+                cur.execute(
+                    "ALTER TABLE tenant_interest ADD COLUMN request_id INT NOT NULL AUTO_INCREMENT UNIQUE FIRST"
+                )
+            except Error:
+                # Keep app booting even if legacy schema cannot be auto-migrated.
+                pass
+
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS tenant_interest_messages (
+              message_id INT AUTO_INCREMENT PRIMARY KEY,
+              request_id INT NOT NULL,
+              sender_role ENUM('tenant','owner') NOT NULL,
+              sender_id VARCHAR(16) NOT NULL,
+              message TEXT NOT NULL,
+              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_msg_request (request_id, created_at)
+            )
+            """
+        )
+        db.commit()
+    except Error as e:
+        db.rollback()
+        print(f"Connect schema setup warning: {e}")
+    finally:
+        cur.close()
+        db.close()
+
+
 def login_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -123,6 +182,7 @@ def next_owner_id(db):
 def _init_schema_once():
     if not app.config.get('_AUTH_SCHEMA_OK'):
         ensure_auth_schema()
+        ensure_connect_schema()
         app.config['_AUTH_SCHEMA_OK'] = True
 
 
@@ -344,8 +404,12 @@ def owner_home():
 
             cur.execute(
                 """
-                SELECT t.tenant_id, t.tenant_name, t.email, t.contactNo,
-                       COUNT(DISTINCT l.property_id) AS leased_properties
+                SELECT
+                    t.tenant_id,
+                    t.tenant_name,
+                    t.email,
+                    t.contactNo,
+                    COUNT(DISTINCT l.lease_id) AS leased_properties
                 FROM lease l
                 JOIN property_s p ON l.property_id = p.property_id
                 JOIN tenant_s t ON l.tenant_id = t.tenant_id
@@ -423,7 +487,9 @@ def tenant_home():
     rent_status = {'status': 'Pending', 'amount_due': 0, 'due_date': None}
     stats = {'paid': 0, 'pending': 0}
     browse_q = (request.args.get('q') or '').strip()
+    active_tab = (request.args.get('tab') or '').strip().lower()
     browse_properties = []
+    today = date.today()
 
     if db:
         cur = db.cursor(dictionary=True)
@@ -471,7 +537,6 @@ def tenant_home():
                         }
                     )
 
-                today = date.today()
                 due_date = date(today.year, today.month, 5)
                 rent_amount = int(lease_info.get('rent_amount') or 0)
 
@@ -556,6 +621,9 @@ def tenant_home():
             cur.close()
             db.close()
 
+    if active_tab not in ('overview', 'profile', 'search'):
+        active_tab = 'search' if browse_q else 'overview'
+
     return render_template(
         'tenant_home.html',
         user=user,
@@ -569,7 +637,341 @@ def tenant_home():
         stats=stats,
         browse_q=browse_q,
         browse_properties=browse_properties,
+        active_tab=active_tab,
         active_page='dashboard'
+    )
+
+
+@app.route('/tenant/connect/<property_id>', methods=['GET', 'POST'])
+@role_required('tenant')
+def tenant_connect_property(property_id):
+    user = session['user']
+    db = get_db()
+    property_info = None
+
+    if not db:
+        flash('Could not connect to database.', 'error')
+        return redirect(url_for('tenant_home', tab='search'))
+
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute(
+            """
+            SELECT p.property_id, p.address, p.property_type, p.rent_amount,
+                   p.owner_id, o.owner_name, o.contactNo
+            FROM property_s p
+            LEFT JOIN owner_s o ON o.owner_id = p.owner_id
+            WHERE p.property_id = %s
+            LIMIT 1
+            """,
+            (property_id,),
+        )
+        property_info = cur.fetchone()
+        if not property_info:
+            flash('Property not found.', 'error')
+            return redirect(url_for('tenant_home', tab='search'))
+
+        if request.method == 'POST':
+            message = (request.form.get('message') or '').strip()
+            tenant_id = user['role_id']
+            owner_id = property_info['owner_id']
+
+            cur.execute(
+                """
+                SELECT request_id
+                FROM tenant_interest
+                WHERE tenant_id = %s AND property_id = %s AND status IN ('Pending','Connected')
+                ORDER BY request_id DESC
+                LIMIT 1
+                """,
+                (tenant_id, property_id),
+            )
+            existing = cur.fetchone()
+
+            if existing:
+                request_id = existing['request_id']
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO tenant_interest (tenant_id, property_id, owner_id, message, status)
+                    VALUES (%s, %s, %s, %s, 'Pending')
+                    """,
+                    (tenant_id, property_id, owner_id, message or None),
+                )
+                request_id = cur.lastrowid
+
+            if message:
+                cur.execute(
+                    """
+                    INSERT INTO tenant_interest_messages (request_id, sender_role, sender_id, message)
+                    VALUES (%s, 'tenant', %s, %s)
+                    """,
+                    (request_id, tenant_id, message),
+                )
+
+            db.commit()
+            flash('Connection request sent to owner.', 'success')
+            return redirect(url_for('connect_chat', request_id=request_id))
+    except Error as e:
+        db.rollback()
+        flash(f'Error: {e}', 'error')
+        return redirect(url_for('tenant_home', tab='search'))
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template('tenant_connect.html', user=user, property_info=property_info, active_page='dashboard')
+
+
+@app.route('/tenant/contact-owner', methods=['GET', 'POST'])
+@role_required('tenant')
+def tenant_contact_owner():
+    user = session['user']
+    db = get_db()
+    lease_info = None
+
+    if not db:
+        flash('Could not connect to database.', 'error')
+        return redirect(url_for('tenant_lease'))
+
+    cur = db.cursor(dictionary=True)
+    try:
+        cur.execute(
+            """
+            SELECT
+              l.lease_id,
+              p.property_id,
+              p.address,
+              p.property_type,
+              p.rent_amount,
+              p.owner_id,
+              o.owner_name,
+              o.contactNo
+            FROM lease l
+            JOIN property_s p ON p.property_id = l.property_id
+            LEFT JOIN owner_s o ON o.owner_id = p.owner_id
+            WHERE l.tenant_id = %s
+            ORDER BY l.lease_id DESC
+            LIMIT 1
+            """,
+            (user['role_id'],),
+        )
+        lease_info = cur.fetchone()
+        if not lease_info:
+            flash('No active lease found for your account.', 'error')
+            return redirect(url_for('tenant_lease'))
+
+        if request.method == 'POST':
+            message = (request.form.get('message') or '').strip()
+            tenant_id = user['role_id']
+            owner_id = lease_info['owner_id']
+            property_id = lease_info['property_id']
+
+            cur.execute(
+                """
+                SELECT request_id
+                FROM tenant_interest
+                WHERE tenant_id = %s AND property_id = %s AND status IN ('Pending','Connected')
+                ORDER BY request_id DESC
+                LIMIT 1
+                """,
+                (tenant_id, property_id),
+            )
+            existing = cur.fetchone()
+
+            if existing:
+                request_id = existing['request_id']
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO tenant_interest (tenant_id, property_id, owner_id, message, status)
+                    VALUES (%s, %s, %s, %s, 'Pending')
+                    """,
+                    (tenant_id, property_id, owner_id, message or None),
+                )
+                request_id = cur.lastrowid
+
+            if message:
+                cur.execute(
+                    """
+                    INSERT INTO tenant_interest_messages (request_id, sender_role, sender_id, message)
+                    VALUES (%s, 'tenant', %s, %s)
+                    """,
+                    (request_id, tenant_id, message),
+                )
+
+            db.commit()
+            flash('Message sent to your property owner.', 'success')
+            return redirect(url_for('connect_chat', request_id=request_id))
+    except Error as e:
+        db.rollback()
+        flash(f'Error: {e}', 'error')
+        return redirect(url_for('tenant_lease'))
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template('tenant_contact_owner.html', user=user, lease=lease_info, active_page='lease')
+
+
+@app.route('/owner/notifications')
+@role_required('owner')
+def owner_notifications():
+    user = session['user']
+    db = get_db()
+    requests_list = []
+
+    if db:
+        cur = db.cursor(dictionary=True)
+        try:
+            cur.execute(
+                """
+                SELECT
+                  ti.request_id,
+                  ti.status,
+                  ti.message,
+                  ti.created_at,
+                  t.tenant_id,
+                  t.tenant_name,
+                  t.email,
+                  t.contactNo,
+                  p.property_id,
+                  p.address,
+                  p.rent_amount
+                FROM tenant_interest ti
+                JOIN tenant_s t ON t.tenant_id = ti.tenant_id
+                JOIN property_s p ON p.property_id = ti.property_id
+                WHERE ti.owner_id = %s
+                ORDER BY ti.created_at DESC
+                """,
+                (user['role_id'],),
+            )
+            requests_list = cur.fetchall()
+        except Error as e:
+            # Legacy-schema fallback: tenant_interest may exist without request_id.
+            if getattr(e, 'errno', None) == 1054:
+                try:
+                    cur.execute(
+                        """
+                        SELECT
+                          NULL AS request_id,
+                          ti.status,
+                          ti.message,
+                          ti.created_at,
+                          t.tenant_id,
+                          t.tenant_name,
+                          t.email,
+                          t.contactNo,
+                          p.property_id,
+                          p.address,
+                          p.rent_amount
+                        FROM tenant_interest ti
+                        JOIN tenant_s t ON t.tenant_id = ti.tenant_id
+                        JOIN property_s p ON p.property_id = ti.property_id
+                        WHERE ti.owner_id = %s
+                        ORDER BY ti.created_at DESC
+                        """,
+                        (user['role_id'],),
+                    )
+                    requests_list = cur.fetchall()
+                except Error as e2:
+                    print(f"Owner notifications query warning: {e2}")
+                    requests_list = []
+            else:
+                print(f"Owner notifications query warning: {e}")
+                requests_list = []
+        finally:
+            cur.close()
+            db.close()
+
+    return render_template('owner_notifications.html', user=user, requests_list=requests_list, active_page='notifications')
+
+
+@app.route('/connect/<int:request_id>', methods=['GET', 'POST'])
+@login_required
+def connect_chat(request_id):
+    user = session['user']
+    db = get_db()
+    if not db:
+        flash('Could not connect to database.', 'error')
+        return redirect(url_for('home'))
+
+    cur = db.cursor(dictionary=True)
+    request_row = None
+    messages = []
+    try:
+        cur.execute(
+            """
+            SELECT
+              ti.request_id, ti.tenant_id, ti.owner_id, ti.property_id,
+              ti.status, ti.created_at,
+              t.tenant_name,
+              o.owner_name,
+              p.address
+            FROM tenant_interest ti
+            JOIN tenant_s t ON t.tenant_id = ti.tenant_id
+            JOIN owner_s o ON o.owner_id = ti.owner_id
+            JOIN property_s p ON p.property_id = ti.property_id
+            WHERE ti.request_id = %s
+            LIMIT 1
+            """,
+            (request_id,),
+        )
+        request_row = cur.fetchone()
+        if not request_row:
+            flash('Conversation not found.', 'error')
+            return redirect(url_for('home'))
+
+        if user['role'] == 'owner' and request_row['owner_id'] != user['role_id']:
+            flash('You are not allowed to access this conversation.', 'error')
+            return redirect(url_for('home'))
+        if user['role'] == 'tenant' and request_row['tenant_id'] != user['role_id']:
+            flash('You are not allowed to access this conversation.', 'error')
+            return redirect(url_for('home'))
+
+        if request.method == 'POST':
+            text = (request.form.get('message') or '').strip()
+            if text:
+                cur.execute(
+                    """
+                    INSERT INTO tenant_interest_messages (request_id, sender_role, sender_id, message)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (request_id, user['role'], user['role_id'], text),
+                )
+                if user['role'] == 'owner' and request_row['status'] == 'Pending':
+                    cur.execute(
+                        "UPDATE tenant_interest SET status='Connected' WHERE request_id=%s",
+                        (request_id,),
+                    )
+                    request_row['status'] = 'Connected'
+                db.commit()
+                return redirect(url_for('connect_chat', request_id=request_id))
+
+        cur.execute(
+            """
+            SELECT message_id, sender_role, sender_id, message, created_at
+            FROM tenant_interest_messages
+            WHERE request_id = %s
+            ORDER BY created_at ASC, message_id ASC
+            """,
+            (request_id,),
+        )
+        messages = cur.fetchall()
+    except Error as e:
+        db.rollback()
+        flash(f'DB error: {e}', 'error')
+        return redirect(url_for('home'))
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template(
+        'connect_chat.html',
+        user=user,
+        request_row=request_row,
+        messages=messages,
+        active_page='notifications' if user['role'] == 'owner' else 'dashboard',
     )
 
 
@@ -638,6 +1040,8 @@ def tenant_rent():
     user = session['user']
     db = get_db()
     rent_status = {'status': 'Pending', 'amount_due': 0, 'due_date': None}
+    current_month_transactions = []
+    previous_month_transactions = []
     if db:
         cur = db.cursor(dictionary=True)
         try:
@@ -664,10 +1068,35 @@ def tenant_rent():
                     rent_status = {'status': 'Overdue', 'amount_due': rent_amount, 'due_date': due_date}
                 else:
                     rent_status = {'status': 'Pending', 'amount_due': rent_amount, 'due_date': due_date}
+
+                cur.execute(
+                    """
+                    SELECT payment_id, pay_date, payment_mode, amount, payment_status
+                    FROM payment_s
+                    WHERE Lease_ID = %s
+                    ORDER BY pay_date DESC, payment_id DESC
+                    """,
+                    (lease['lease_id'],)
+                )
+                tx_rows = cur.fetchall()
+
+                for tx in tx_rows:
+                    pay_date = tx.get('pay_date')
+                    if pay_date and pay_date.year == today.year and pay_date.month == today.month:
+                        current_month_transactions.append(tx)
+                    else:
+                        previous_month_transactions.append(tx)
         finally:
             cur.close()
             db.close()
-    return render_template('tenant_rent.html', user=user, rent_status=rent_status, active_page='rent')
+    return render_template(
+        'tenant_rent.html',
+        user=user,
+        rent_status=rent_status,
+        current_month_transactions=current_month_transactions,
+        previous_month_transactions=previous_month_transactions,
+        active_page='rent'
+    )
 
 
 # ── ADMIN DASHBOARD (OPTIONAL) ────────────────────────────────────────────────
@@ -726,14 +1155,33 @@ def tenants():
         try:
             cursor.execute(
                 """
-                SELECT DISTINCT t.*
+                SELECT
+                    t.tenant_id,
+                    t.tenant_name,
+                    t.email,
+                    t.contactNo,
+                    al.lease_id,
+                    al.property_id,
+                    p.address AS property_address,
+                    p.rent_amount AS property_rent,
+                    'Active' AS lease_state
                 FROM tenant_s t
-                JOIN lease l ON t.tenant_id = l.tenant_id
-                JOIN property_s p ON l.property_id = p.property_id
-                WHERE p.owner_id = %s
+                JOIN (
+                    SELECT l1.tenant_id, l1.lease_id, l1.property_id
+                    FROM lease l1
+                    JOIN property_s p1 ON p1.property_id = l1.property_id AND p1.owner_id = %s
+                    JOIN (
+                        SELECT l.tenant_id, MAX(l.lease_id) AS max_lease_id
+                        FROM lease l
+                        JOIN property_s p2 ON p2.property_id = l.property_id AND p2.owner_id = %s
+                        GROUP BY l.tenant_id
+                    ) lm
+                    ON lm.tenant_id = l1.tenant_id AND lm.max_lease_id = l1.lease_id
+                ) al ON al.tenant_id = t.tenant_id
+                JOIN property_s p ON p.property_id = al.property_id
                 ORDER BY t.tenant_id
                 """,
-                (user['role_id'],),
+                (user['role_id'], user['role_id']),
             )
             tenants_list = cursor.fetchall()
         except Error as e:
@@ -803,9 +1251,27 @@ def properties():
         cursor = db.cursor(dictionary=True)
         try:
             cursor.execute("""
-                SELECT p.*, o.owner_name
+                SELECT
+                    p.*,
+                    o.owner_name,
+                    al.lease_id AS active_lease_id,
+                    al.tenant_id AS active_tenant_id,
+                    t.tenant_name AS active_tenant_name,
+                    t.contactNo AS active_tenant_contact,
+                    t.email AS active_tenant_email
                 FROM property_s p
                 LEFT JOIN owner_s o ON p.owner_id = o.owner_id
+                LEFT JOIN (
+                    SELECT l1.property_id, l1.lease_id, l1.tenant_id
+                    FROM lease l1
+                    JOIN (
+                        SELECT property_id, MAX(lease_id) AS max_lease_id
+                        FROM lease
+                        GROUP BY property_id
+                    ) lm
+                    ON lm.property_id = l1.property_id AND lm.max_lease_id = l1.lease_id
+                ) al ON al.property_id = p.property_id
+                LEFT JOIN tenant_s t ON t.tenant_id = al.tenant_id
                 WHERE p.owner_id = %s
                 ORDER BY p.property_id
             """, (user['role_id'],))

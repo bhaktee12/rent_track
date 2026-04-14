@@ -49,8 +49,8 @@
         <tr>
           <th>ID</th>
           <th>Name</th>
-          <th>Email</th>
-          <th>Contact</th>
+          <th>Lease Details</th>
+          <th>Connect</th>
         </tr>
       </thead>
       <tbody>
@@ -58,8 +58,29 @@
         <tr>
           <td>{{ t.tenant_id }}</td>
           <td><strong>{{ t.tenant_name }}</strong></td>
-          <td>{{ t.email }}</td>
-          <td>{{ t.contactNo }}</td>
+          <td>
+            {% if t.lease_id and t.lease_state == 'Active' %}
+              <div class="sub">Property: {{ t.property_id }} · {{ t.property_address or '—' }}</div>
+              <div class="sub">Rent: ₹{{ t.property_rent or '—' }}</div>
+            {% elif t.lease_state == 'Unassigned' %}
+              <span class="sub">No active lease yet</span>
+            {% else %}
+              <span class="sub">Assigned under another owner</span>
+            {% endif %}
+          </td>
+          <td>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              {% if t.contactNo %}
+                <a class="btn btn-ghost" style="padding:5px 10px; font-size:0.74rem;" href="tel:{{ t.contactNo }}">Call</a>
+              {% endif %}
+              {% if t.email %}
+                <a class="btn btn-ghost" style="padding:5px 10px; font-size:0.74rem;" href="mailto:{{ t.email }}">Email</a>
+              {% endif %}
+              {% if not t.contactNo and not t.email %}
+                <span class="sub">Not available</span>
+              {% endif %}
+            </div>
+          </td>
         </tr>
         {% endfor %}
       </tbody>

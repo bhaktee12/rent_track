@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Connect With Owner – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Connect With Owner</h2>
+    <p>Send an interest message for this property.</p>
+  </div>
+  <a class="btn btn-ghost" href="{{ url_for('tenant_home', tab='search') }}">Back to Search</a>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Property Details</div>
+  </div>
+  <div class="profile-details-grid">
+    <div class="profile-detail-item full-width">
+      <div class="detail-label">Address</div>
+      <div class="detail-value">{{ property_info.address }} ({{ property_info.property_id }})</div>
+    </div>
+    <div class="profile-detail-item">
+      <div class="detail-label">Type</div>
+      <div class="detail-value">{{ property_info.property_type }}</div>
+    </div>
+    <div class="profile-detail-item">
+      <div class="detail-label">Monthly Rent</div>
+      <div class="detail-value money">₹{{ property_info.rent_amount }}</div>
+    </div>
+    <div class="profile-detail-item">
+      <div class="detail-label">Owner</div>
+      <div class="detail-value">{{ property_info.owner_name or '—' }}</div>
+    </div>
+    <div class="profile-detail-item">
+      <div class="detail-label">Owner Contact</div>
+      <div class="detail-value">{{ property_info.contactNo or '—' }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Your Message</div>
+  </div>
+  <form method="POST">
+    <div class="form-group">
+      <label>Message to Owner</label>
+      <textarea name="message" rows="5" placeholder="Hi, I am interested in renting this property. Please share availability and next steps." style="width:100%; border:1px solid var(--border2); border-radius:7px; padding:10px 12px; font-family:'DM Sans',sans-serif; font-size:0.875rem;"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" type="submit">Send Request</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

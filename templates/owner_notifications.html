@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Owner Notifications – RentTracker{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h2>Notifications</h2>
+    <p>Tenant requests to connect for rental interest.</p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">Connection Requests ({{ requests_list|length }})</div>
+  {% if requests_list %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tenant</th>
+            <th>Property</th>
+            <th>Rent</th>
+            <th>Status</th>
+            <th>Request Time</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in requests_list %}
+            <tr>
+              <td>
+                <strong>{{ r.tenant_name }}</strong>
+                <div class="sub">{{ r.tenant_id }} · {{ r.contactNo or r.email or 'No contact' }}</div>
+              </td>
+              <td>
+                <strong>{{ r.address }}</strong>
+                <div class="sub">{{ r.property_id }}</div>
+              </td>
+              <td class="money">₹{{ r.rent_amount }}</td>
+              <td>
+                <span class="badge {% if r.status == 'Connected' %}badge-green{% elif r.status == 'Closed' %}badge-red{% else %}badge-orange{% endif %}">{{ r.status }}</span>
+              </td>
+              <td>{{ r.created_at }}</td>
+              <td>
+                {% if r.request_id %}
+                  <a class="btn btn-ghost" style="padding:6px 12px; font-size:0.78rem;" href="{{ url_for('connect_chat', request_id=r.request_id) }}">Open Chat</a>
+                {% else %}
+                  <span class="sub">Unavailable</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p style="color:var(--muted); font-size:0.875rem;">No connection requests yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

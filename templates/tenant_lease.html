@@ -48,6 +48,9 @@
         <div class="detail-label">Owner Contact</div>
         <div class="detail-value">{{ lease.owner_contact or '—' }}</div>
       </div>
+      <div class="profile-detail-item full-width">
+        <a class="btn btn-amber" href="{{ url_for('tenant_contact_owner') }}">Contact</a>
+      </div>
     </div>
   {% else %}
     <p style="color:var(--muted); font-size:0.875rem;">Owner contact details unavailable.</p>
